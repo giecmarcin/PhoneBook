@@ -7,12 +7,14 @@ import com.my.repository.SettingsDb;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -33,38 +35,28 @@ public class PersonRepositoryTemplate implements PersonJDBCRepository {
     @Override
     public Person savePerson(Person person) {
         String query = "INSERT INTO phonebook.people(firstname, lastname) Values(?,?)";
-        KeyHolder holder = new GeneratedKeyHolder();
-        jdbcTemplate.update(new PreparedStatementCreator() {
-            @Override
-            public PreparedStatement createPreparedStatement(Connection connection)
-                    throws SQLException {
-                PreparedStatement ps = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-                ps.setString(1, person.getFirstName());
-                ps.setString(2, person.getLastname());
-                return ps;
-            }
-        }, holder);
-        int newPersonId = holder.getKey().intValue();
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(
+                new PreparedStatementCreator() {
+                    public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
+                        PreparedStatement ps =
+                                connection.prepareStatement(query, new String[] {"id_person"});
+                        ps.setString(1, person.getFirstName());
+                        ps.setString(2, person.getLastname());
+                        return ps;
+                    }
+                },
+                keyHolder);
         Person personFromDb = null;
-        personFromDb = findPersonById(newPersonId);
+        personFromDb = findPersonById(Integer.parseInt(keyHolder.getKey().toString()));
         return personFromDb;
     }
 
     @Override
     public Person findPersonById(int id) {
-        String query = "INSERT INTO phonebook.people(firstname, lastname) Values(?,?)";
-        Person person = this.jdbcTemplate.queryForObject(
-                "select first_name, last_name from t_actor where id = ?",
-                new Object[]{1212L},
-                new RowMapper<Person>() {
-                    public Person mapRow(ResultSet rs, int rowNum) throws SQLException {
-                        Person person1 = new Person();
-                        person1.setId(rs.getInt("id_person"));
-                        person1.setFirstName(rs.getString("firstname"));
-                        person1.setLastname(rs.getString("lastname"));
-                        return person1;
-                    }
-                });
+        String query = "SELECT * FROM phonebook.people WHERE id_person=?";
+        Person person = (Person) jdbcTemplate.queryForObject(
+                query, new Object[] {id}, new PersonRowMapper());
         return  person;
     }
 

@@ -3,7 +3,6 @@ package com.my.repository;
 import com.my.model.Contact;
 import com.my.model.Person;
 
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Iterator;
