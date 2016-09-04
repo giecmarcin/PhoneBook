@@ -15,17 +15,23 @@ import java.util.logging.Logger;
  */
 public class PersonJDBCRepositoryImpl implements PersonJDBCRepository {
     private SettingsDb settingsDb;
+    private Connection connection;
     private ContactJDBCRepositoryImpl contactJDBCRepository;
+
     private final Logger LOGGER = Logger.getLogger(PersonJDBCRepositoryImpl.class.getName());
+
 
     public PersonJDBCRepositoryImpl(SettingsDb settingsDb) {
         this.settingsDb = settingsDb;
         contactJDBCRepository = new ContactJDBCRepositoryImpl(settingsDb);
         try {
             Class.forName("org.postgresql.Driver");
+            connection = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd());
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
             LOGGER.info(e.getMessage());
+        }catch (SQLException e){
+            e.printStackTrace();
         }
     }
 
@@ -36,10 +42,9 @@ public class PersonJDBCRepositoryImpl implements PersonJDBCRepository {
      */
     public Person savePerson(Person person) {
         Person personFromDb = null;
-        try (Connection con = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd());
-        ) {
-            String query = "INSERT INTO phonebook.people(firstname, lastname) Values(?,?)";
-            PreparedStatement preparedStatement = con.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS);
+        String query = "INSERT INTO phonebook.people(firstname, lastname) Values(?,?)";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS)) {
+            connection.setAutoCommit(true);
             preparedStatement.setString(1, person.getFirstName());
             preparedStatement.setString(2, person.getLastname());
             preparedStatement.executeUpdate();
@@ -61,11 +66,9 @@ public class PersonJDBCRepositoryImpl implements PersonJDBCRepository {
      */
     public Person findPersonById(int id) {
         Person person = null;
-        try (Connection con = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd())
-        ) {
-            String query = "SELECT * FROM phonebook.people WHERE id_person=?";
-
-            PreparedStatement preparedStatement = con.prepareStatement(query);
+        String query = "SELECT * FROM phonebook.people WHERE id_person=?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+            connection.setAutoCommit(true);
             preparedStatement.setInt(1, id);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
@@ -88,12 +91,10 @@ public class PersonJDBCRepositoryImpl implements PersonJDBCRepository {
      * @return - The found people with a specific name and surname from database.
      */
     public List<Person> findPersonByNameAndLastName(String firstname, String lastname) {
+        String query = "SELECT * FROM phonebook.people WHERE firstname=? and lastname=?";
         List<Person> people = new ArrayList<>();
-        try (Connection con = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd())
-        ) {
-            String query = "SELECT * FROM phonebook.people WHERE firstname=? and lastname=?";
-
-            PreparedStatement preparedStatement = con.prepareStatement(query);
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+            connection.setAutoCommit(true);
             preparedStatement.setString(1, firstname);
             preparedStatement.setString(2, lastname);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -118,19 +119,12 @@ public class PersonJDBCRepositoryImpl implements PersonJDBCRepository {
      */
     public Person saveNewPersonWithNewContacts(Person person, List<Contact> contacts) {
         Person personFromDb = null;
-        try (Connection con = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd());
-        ) {
-            con.setAutoCommit(false);
             personFromDb = savePerson(person);
             for (Contact c : contacts) {
                 c.setIdPerson(personFromDb.getId());
                 contactJDBCRepository.saveContact(c);
             }
             return personFromDb;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return personFromDb;
-        }
     }
 
     /**
@@ -153,10 +147,8 @@ public class PersonJDBCRepositoryImpl implements PersonJDBCRepository {
 
     @Override
     public void saveAlotOfPersonWithNewContactsInTransaction(Map<Person, List<Contact>> personWithContacts) {
-        Connection con = null;
         try{
-            con = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd());
-            con.setAutoCommit(false);
+            connection.setAutoCommit(false);
             String insertPersonQuery = "INSERT INTO phonebook.people(firstname, lastname) Values(?,?)";
             String insertContactQuery = "INSERT INTO phonebook.contacts(_type, _value, id_person) Values(?,?,?)";
             Iterator entries = personWithContacts.entrySet().iterator();
@@ -165,21 +157,21 @@ public class PersonJDBCRepositoryImpl implements PersonJDBCRepository {
                 Person key = (Person) thisEntry.getKey();
                 List<Contact> value = (List<Contact>) thisEntry.getValue();
 
-                PreparedStatement preparedStatement = con.prepareStatement(insertPersonQuery, PreparedStatement.RETURN_GENERATED_KEYS);
+                PreparedStatement preparedStatement = connection.prepareStatement(insertPersonQuery, PreparedStatement.RETURN_GENERATED_KEYS);
                 preparedStatement.setString(1, key.getFirstName());
                 preparedStatement.setString(2, key.getLastname());
                 preparedStatement.executeUpdate();
                 ResultSet resultSet = preparedStatement.getGeneratedKeys();
                 resultSet.next();
                 for(Contact c: value){
-                    PreparedStatement preparedStatementC = con.prepareStatement(insertContactQuery, PreparedStatement.RETURN_GENERATED_KEYS);
+                    PreparedStatement preparedStatementC = connection.prepareStatement(insertContactQuery, PreparedStatement.RETURN_GENERATED_KEYS);
                     preparedStatementC.setString(1, c.getType());
                     preparedStatementC.setString(2, c.getValue());
                     preparedStatementC.setInt(3, resultSet.getInt(1));
                     preparedStatementC.executeUpdate();
                     ResultSet resultSetC = preparedStatementC.getGeneratedKeys();
                 }
-                con.setAutoCommit(true);
+                connection.setAutoCommit(true);
             }
         }catch (SQLException e){
             e.printStackTrace();

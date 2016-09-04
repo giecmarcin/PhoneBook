@@ -13,12 +13,16 @@ import java.util.List;
  */
 public class ContactJDBCRepositoryImpl implements ContactJDBCRepository {
     private SettingsDb settingsDb;
+    private Connection connection;
 
     public ContactJDBCRepositoryImpl(SettingsDb settingsDb) {
         this.settingsDb = settingsDb;
         try {
             Class.forName("org.postgresql.Driver");
+            connection = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd());
         } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }catch (SQLException e){
             e.printStackTrace();
         }
     }
@@ -29,10 +33,9 @@ public class ContactJDBCRepositoryImpl implements ContactJDBCRepository {
      */
     public boolean isConnected() {
         boolean  isConnected = false;
-        try (Connection con = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd())
-        ) {
-            String query = "SELECT(1) FROM phonebook.contacts";
-            PreparedStatement preparedStatement = con.prepareStatement(query);
+        String query = "SELECT(1) FROM phonebook.contacts";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+            connection.setAutoCommit(true);
             ResultSet resultSet = preparedStatement.executeQuery();
             if(!resultSet.wasNull()){
                 isConnected = true;
@@ -50,10 +53,9 @@ public class ContactJDBCRepositoryImpl implements ContactJDBCRepository {
      */
     public Contact saveContact(Contact contact) {
         Contact contactFromDb = null;
-        try (Connection con = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd());
-        ) {
-            String query = "INSERT INTO phonebook.contacts(_type, _value, id_person) Values(?,?,?)";
-            PreparedStatement preparedStatement = con.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS);
+        String query = "INSERT INTO phonebook.contacts(_type, _value, id_person) Values(?,?,?)";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS)) {
+            connection.setAutoCommit(true);
             preparedStatement.setString(1, contact.getType());
             preparedStatement.setString(2, contact.getValue());
             preparedStatement.setInt(3, contact.getIdPerson());
@@ -77,11 +79,9 @@ public class ContactJDBCRepositoryImpl implements ContactJDBCRepository {
      */
     public Contact findContactById(int id){
         Contact contact = null;
-        try (Connection con = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd())
-        ) {
-            String query = "SELECT * FROM phonebook.contacts WHERE _id=?";
-
-            PreparedStatement preparedStatement = con.prepareStatement(query);
+        String query = "SELECT * FROM phonebook.contacts WHERE _id=?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+            connection.setAutoCommit(true);
             preparedStatement.setInt(1, id);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
@@ -105,11 +105,8 @@ public class ContactJDBCRepositoryImpl implements ContactJDBCRepository {
      */
     public List<Contact> findAllContactsByPerson(Person person){
         List<Contact> contacts = new ArrayList<>();
-        try (Connection con = DriverManager.getConnection(settingsDb.getUrlToDb(), settingsDb.getUser(), settingsDb.getPassowrd())
-        ) {
-            String query = "SELECT * FROM phonebook.contacts WHERE id_person=?";
-
-            PreparedStatement preparedStatement = con.prepareStatement(query);
+        String query = "SELECT * FROM phonebook.contacts WHERE id_person=?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             preparedStatement.setInt(1, person.getId());
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
