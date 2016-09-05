@@ -61,13 +61,15 @@ public class PersonRepositoryTemplate implements PersonJDBCRepository {
         String query = "SELECT * FROM phonebook.people WHERE id_person=?";
         Person person = (Person) jdbcTemplate.queryForObject(
                 query, new Object[] {id}, new PersonRowMapper());
-
         return  person;
     }
 
     @Override
     public List<Person> findPersonByNameAndLastName(String firstname, String lastname) {
-        return null;
+        String query = "SELECT * FROM phonebook.people WHERE firstname=? AND lastname=?";
+        List <Person> people = jdbcTemplate.query(
+                query, new Object[]{firstname, lastname}, new PersonRowMapper());
+        return  people;
     }
 
     @Override
