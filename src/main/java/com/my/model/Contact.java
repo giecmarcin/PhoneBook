@@ -22,6 +22,7 @@ public class Contact {
         this.idPerson = idPerson;
     }
 
+    public Contact(){}
     public Contact(String type, String value) {
         this.type = type;
         this.value = value;
