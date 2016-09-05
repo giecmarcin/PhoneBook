@@ -61,6 +61,7 @@ public class PersonRepositoryTemplate implements PersonJDBCRepository {
         String query = "SELECT * FROM phonebook.people WHERE id_person=?";
         Person person = (Person) jdbcTemplate.queryForObject(
                 query, new Object[] {id}, new PersonRowMapper());
+
         return  person;
     }
 

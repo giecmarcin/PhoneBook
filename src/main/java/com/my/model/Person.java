@@ -10,19 +10,17 @@ public class Person {
     private int id;
     private String firstName;
     private String lastname;
-    private List<Contact> contacts;
+    private List<Contact> contacts = new ArrayList<>();
 
     public Person(int id, String firstName, String lastname) {
         this.id = id;
         this.firstName = firstName;
         this.lastname = lastname;
-        contacts = new ArrayList<>();
     }
 
     public Person(String firstName, String lastname) {
         this.firstName = firstName;
         this.lastname = lastname;
-        contacts = new ArrayList<>();
     }
     public Person(){};
 
