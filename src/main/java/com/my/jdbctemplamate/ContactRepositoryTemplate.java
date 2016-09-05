@@ -41,7 +41,7 @@ public class ContactRepositoryTemplate implements ContactJDBCRepository {
                 new PreparedStatementCreator() {
                     public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
                         PreparedStatement ps =
-                                connection.prepareStatement(query, new String[] {"id_person"});
+                                connection.prepareStatement(query, new String[] {"_id"});
                         ps.setString(1, contact.getType());
                         ps.setString(2, contact.getValue());
                         ps.setInt(3, contact.getIdPerson());
